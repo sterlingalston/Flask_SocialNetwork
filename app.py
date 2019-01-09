@@ -6,6 +6,8 @@ from flask.ext.login import (LoginManager, login_user, logout_user,
 import forms
 import models
 
+#setting up ports and defaults
+
 DEBUG = True
 PORT = 8000
 HOST = '0.0.0.0'
@@ -108,16 +110,53 @@ def stream(username = None):
         user = current_user
     if username:
         template = 'user_stream.html'
-    return render_template(template, stream = stream)
+    return render_template(template, stream = stream, user = user)
 
+@app.route('/follow/<username>')
+@login_required
+def follow(username):
+    try:
+        to_user = models.User.get(models.User.username**username) # case insensitve search ** is 'like'
+    except models.DoesNotExist:
+        pass
+    else:
+        try:
+            models.Relationship.create(
+                from_user = g.user._get_current_object(),
+                to_user = to_user
+            )
+        except models.IntegrityError:
+            pass
+        else:
+            flash("You're now following {}!".format(to_user.username), "success")
+    return redirect(url_for('stream', username = to_user.username))
+
+@app.route('/unfollow/<username>')
+@login_required
+def unfollow(username):
+    try:
+        to_user = models.User.get(models.User.username**username) # case insensitve search ** is 'like'
+    except models.DoesNotExist:
+        pass
+    else:
+        try:
+            models.Relationship.get(
+                from_user = g.user._get_current_object(),
+                to_user = to_user
+            ).delete_instance()
+        except models.IntegrityError:
+            pass
+        else:
+            flash("You've unfollowed {}!".format(to_user.username), "success")
+    return redirect(url_for('stream', username = to_user.username))
 
 if __name__ == '__main__':
     models.initialize()
     try:
         models.User.create_user(
-            username='kennethlove',
-            email='kenneth@teamtreehouse.com',
-            password='password',
+            username='malston',
+            email='malston@gmail.com',
+            password='malston11',
             admin=True
         )
     except ValueError:
